@@ -37,7 +37,7 @@ static int libphotoindex_lua_initialize(lua_State *L)
     size_t sz;
     photoindex_ctx_t * ctx = NULL;
 
-    fprintf(stderr, "call func %s\n", __func__);
+    fprintf(stderr, "call function %s\n", __func__);
 
     ctx = (photoindex_ctx_t*)lua_newuserdata(L, sizeof(*ctx));
     ctx->initialized = TRUE;
@@ -50,7 +50,7 @@ static int libphotoindex_lua_test_func(lua_State *L)
     photoindex_ctx_t *ctx = NULL;
     const char *s = NULL;
 
-    fprintf(stderr, "call func %s\n", __func__);
+    fprintf(stderr, "call function %s\n", __func__);
 
     ctx = lua_touserdata(L, 1);
     if (ctx->initialized != TRUE)
