@@ -2,9 +2,11 @@
 local worker = require("gearmanWorker")
 local cjson  = require("cjson")
 local io     = require("io")
+local photoindex = require("photoindex")
 
 --register modules
 local moduleTable = {}
+moduleTable[photoindex.name] = photoindex
 
 --suspended task list
 local suspendedTaskList = {}
@@ -42,7 +44,6 @@ function dispatch(jsonObj, t)
     params = jsonObj['params']
     id     = jsonObj['id']
 
-    dumpJsonObject(jsonObj)
     module, func = getMoudleAndFunc(method)
 
     if t[module] and t[module][func] then
@@ -84,6 +85,10 @@ function dispatch(jsonObj, t)
     return jsonResponseMessage
 end
 
+function sleep(n)
+    os.execute("sleep " .. n)
+end
+
 function callBack(size, buffer)
     local jsonResponseMessage
     local jsonRequestMessage = buffer
@@ -111,11 +116,11 @@ end)
 
 workerRoutine = coroutine.create(function ()
         gearmanWorker = worker.gearmanWorker
-        routerWorker = gearmanWorker:new("192.168.10.2", 4730, false, 0)
-        routerWorker:registerFunc(callBack)
+        photoindexWorker = gearmanWorker:new("127.0.0.1", 4730, false, 0, "photoindex")
+        photoindexWorker:registerFunc(callBack)
     while true do
-        routerWorker:work()
-        common.sleep(1)
+        photoindexWorker:work()
+        sleep(1)
         coroutine.resume(suspendedTaskRoutine)
     end
 end)

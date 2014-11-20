@@ -38,6 +38,7 @@ typedef struct _worker_ctx_t
     in_port_t         port;             /* server port */
     bool              ssl;
     int               timeout;
+    const char        *func;
     char              buf[BUF_SIZE];    /* message buffer */
 }worker_ctx_t;
 
@@ -180,6 +181,19 @@ static void stackDump (lua_State *L) {
 static int worker_lua_gc(lua_State *L)
 {
     worker_ctx_t* w = *(worker_ctx_t **)lua_touserdata(L, 1);
+
+    if (w->host)
+    {
+        free((void*)w->host);
+        w->host = NULL;
+    }
+
+    if (w->func)
+    {
+        free((void*)w->func);
+        w->func = NULL;
+    }
+
     if (w) {
         gearman_worker_free(&w->worker);
         free(w);
@@ -194,7 +208,7 @@ static int worker_lua_initialize(lua_State *L)
     worker_ctx_t* router_worker;
 
     argc = lua_gettop(L);
-    if (argc != 4) {
+    if (argc != 5) {
         lua_pushboolean(L, FALSE);
         return 1;
     }
@@ -214,8 +228,7 @@ static int worker_lua_initialize(lua_State *L)
         lua_pushboolean(L, FALSE);
         return 1;
     }
-
-    //fprintf(stderr, "--------work is %08x ------\r\n", (unsigned int)router_worker);
+    memset(router_worker, 0, sizeof(*router_worker));
 
     *w = router_worker;
     router_worker->module_name = MODULE_NAME;
@@ -223,13 +236,15 @@ static int worker_lua_initialize(lua_State *L)
     router_worker->port = (in_port_t)lua_tointeger(L, 2);
     router_worker->ssl  = lua_toboolean(L, 3);
     router_worker->timeout = lua_tointeger(L, 4);
+    router_worker->func = strdup(lua_tostring(L, 5));
 
     /* debug g_router_worker */
-    fprintf(stderr, "host:%s, port:%d, ssl:%d, timeout:%d\n",
+    fprintf(stderr, "host:%s, port:%d, ssl:%d, timeout:%d, func:%s\n",
             router_worker->host,
             router_worker->port,
             router_worker->ssl,
-            router_worker->timeout);
+            router_worker->timeout,
+            router_worker->func);
 
     if (NULL == gearman_worker_create(&router_worker->worker)) {
         fprintf(stderr, "gearman worker create failed\n");
@@ -251,7 +266,7 @@ static int worker_lua_initialize(lua_State *L)
         return 1;
     }
 
-    if (gearman_worker_add_function(&router_worker->worker, "router", 0, worker_cb, (void*)L) != GEARMAN_SUCCESS) {
+    if (gearman_worker_add_function(&router_worker->worker, router_worker->func, 0, worker_cb, (void*)L) != GEARMAN_SUCCESS) {
         fprintf(stderr, "gearman worker add function failed\n");
         lua_pushboolean(L, FALSE);
         return 1;
