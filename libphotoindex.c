@@ -42,15 +42,18 @@ static int libphotoindex_lua_initialize(lua_State *L)
     ctx = (photoindex_ctx_t*)lua_newuserdata(L, sizeof(*ctx));
     ctx->initialized = TRUE;
 
+    luaL_getmetatable(L, WORKER_META);
+    lua_setmetatable(L, -2);
+
     return 1;
 }
 
 static int libphotoindex_lua_test_func(lua_State *L)
 {
+    fprintf(stderr, "call function %s\n", __func__);
+
     photoindex_ctx_t *ctx = NULL;
     const char *s = NULL;
-
-    fprintf(stderr, "call function %s\n", __func__);
 
     ctx = lua_touserdata(L, 1);
     if (ctx->initialized != TRUE)
@@ -77,19 +80,59 @@ static const luaL_Reg libphotoindex[] = {
     {NULL, NULL}
 };
 
+static int meta_lua_test(lua_State *L)
+{
+    fprintf(stderr, "call function %s.\n", __func__);
+
+    photoindex_ctx_t *ctx = NULL;
+    const char *s = NULL;
+
+    ctx = lua_touserdata(L, 1);
+    if (ctx->initialized != TRUE)
+    {
+        lua_pushboolean(L, FALSE);
+        return 1;
+    }
+
+    s = strdup(lua_tostring(L, 2));
+    fprintf(stderr, "%s\n", s);
+    free((void*)s);
+    s = NULL;
+
+    lua_pushboolean(L, TRUE);
+    return 1;
+}
+
+static const luaL_Reg meta[] = {
+    {"meta_func", meta_lua_test},
+    {NULL, NULL}
+};
+
 int luaopen_libphotoindex(lua_State *L)
 {
-    /*create module */
-    luaL_register(L, MODULE_NAME, libphotoindex);
-
+#if 1
     /* ceate metatable */
     luaL_newmetatable(L, WORKER_META);
-
-    /* Fill metatable */
-    luaL_register(L, NULL, libphotoindex);
+    lua_pushstring(L, "__index");
+    lua_pushvalue(L, -2);
 
     /* metatable.__index = metatable */
+    lua_rawset(L, -3);
+
+    /* Fill metatable */
+    luaL_openlib(L, NULL, meta, 0);
+
+    lua_pop(L, 1);
+#else
+
+    luaL_newmetatable(L, WORKER_META);
+    lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
+    luaL_register(L, NULL, meta);
+    lua_pop(L, 1);
+#endif
+
+    luaL_register(L, MODULE_NAME, libphotoindex);
 
     return 0;
 }
