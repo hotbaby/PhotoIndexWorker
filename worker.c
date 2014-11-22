@@ -317,17 +317,29 @@ static const luaL_Reg worker[] = {
 
 int luaopen_worker(lua_State *L)
 {
-    /*create module */
-    luaL_register(L, MODULE_NAME, worker);
-
+#if 1
     /* ceate metatable */
     luaL_newmetatable(L, WORKER_META);
-
-    /* Fill metatable */
-    luaL_register(L, NULL, worker);
+    lua_pushstring(L, "__index");
+    lua_pushvalue(L, -2);
 
     /* metatable.__index = metatable */
+    lua_rawset(L, -3);
+
+    /* Fill metatable */
+    luaL_openlib(L, NULL, worker, 0);
+
+    lua_pop(L, 1);
+#else
+
+    luaL_newmetatable(L, WORKER_META);
+    lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
+    luaL_register(L, NULL, worker);
+    lua_pop(L, 1);
+#endif
+
+    luaL_register(L, MODULE_NAME, worker);
 
     return 0;
 }
